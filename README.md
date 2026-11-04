@@ -16,3 +16,13 @@ v0.1.0: one limb (shoulder/elbow/wrist).
 - Note: candidate seeds depend on the button, so all four limbs see the same model candidates for a press. They only differ when joint limits or a human demo come into play.
 
     python3 demo.py
+
+## v0.3.0: timing one Grok-1 layer
+Route used: **hybrid**. The code downloads one real Grok-1 tensor from the published checkpoint (`ckpt-0/tensor00001_000`, a float32 vector of 6144 values, about 24 KB, unpickled with a numpy-only loader) and uses it to scale the input. Grok-1 is about 314B parameters, so the model is **never downloaded in full**. The 8 weight groups of one layer (q, k, v, o, router, expert w_in, w_v, w_out) are **exact Grok-1 shapes** from the published config (d=6144, 48 q heads and 8 kv heads × 128, 8 experts, FFN 32768). Their values are random, because those shards are several GB each. Each group is one data bit of a limb's byte tree, timed as a slow, row-tiled matvec on this CPU. The group times become joint move durations. If the download fails, the code falls back to the stand-in MLP.
+
+These timings come from this box, not from Grok's production hardware, and reflect neither Grok's inference stack nor its trained values for the large matrices.
+
+    python3 demo_grok1.py
+
+### Credit
+Grok-1 by xAI, https://github.com/xai-org/grok-1, weights at https://huggingface.co/xai-org/grok-1, released under the Apache License 2.0. This repo has no license of its own and does not redistribute any weights. The tensor is fetched at runtime into `.cache/`, which is gitignored.
